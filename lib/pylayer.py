@@ -1,13 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # Code written by KAI ZHAO(http://kaiz.xyz)
-
 import caffe
 import numpy as np
-from PIL import Image
-import random, os
-from os.path import join
-from scipy.io import *
+from os.path import join, isfile
+import random, cv2
+
 class ImageLabelmapDataLayer(caffe.Layer):
   """
   Python data layer
@@ -41,28 +39,27 @@ class ImageLabelmapDataLayer(caffe.Layer):
     Load data
     """
     [imgfn, lbfn] = self.filelist[self.idx].split()
-    img = np.array(Image.open(join(self.root, imgfn)), dtype=np.float32)
+    [imgfn, lbfn] = join(self.root, imgfn), join(self.root, lbfn)
+    assert isfile(imgfn) and isfile(lbfn), "File not exists!"
+    img = cv2.imread(imgfn).astype(np.float32)
+    lb = cv2.imread(lbfn, 0).astype(np.float32)
     if img.ndim == 2:
       img = img[:,:,np.newaxis]
       img = np.repeat(img, 3, 2)
     img -= self.mean
     img = np.transpose(img, (2, 0, 1))
     img = img[np.newaxis, :, :, :]
-    lb = np.array(Image.open(join(self.root, lbfn)), dtype=np.float32)
-    if lb.ndim == 3 and lb.shape[2] != 1:
-      lb = np.squeeze(lb[:, :, 0])
-    assert lb.ndim == 2
+    assert lb.ndim == 2, "lb.ndim = %d"%lb.ndim
     h, w = lb.shape
-    assert img.shape[2] == h and img.shape[3] == w
+    assert img.shape[2] == h and img.shape[3] == w, "Image and GT shape mismatch."
     lb = lb[np.newaxis, np.newaxis, :, :]
-    mask = lb >= 126
-    lb[mask] = 1
+    lb[lb < 100] = 0
+    lb[lb != 0] = 1
     if np.count_nonzero(lb) == 0:
       print "Warning: all zero label map!"
-    lb[np.logical_not(mask)] = 0
     top[0].reshape(1, 3, h, w)
-    top[0].data[...] = img
     top[1].reshape(1, 1, h, w)
+    top[0].data[...] = img
     top[1].data[...] = lb
     if self.idx == len(self.filelist)-1:
       self.idx = 0

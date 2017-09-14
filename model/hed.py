@@ -4,6 +4,7 @@ import caffe
 from caffe import layers as L, params as P
 from caffe.coord_map import crop
 import numpy as np
+from math import ceil
 
 def conv_relu(bottom, nout, ks=3, stride=1, pad=1, mult=[1,1,2,0]):
   conv = L.Convolution(bottom, kernel_size=ks, stride=stride,
@@ -18,11 +19,11 @@ def full_conv(bottom, name, lr):
   return L.Convolution(bottom, name=name, kernel_size=1,num_output=1,# weight_filler=dict(type='xavier'),
       param=[dict(lr_mult=0.01*lr, decay_mult=1), dict(lr_mult=0.02*lr, decay_mult=0)])
 def upsample(bottom, stride):
-  s, k = stride, 2 * stride
+  s, k, pad = stride, 2 * stride, int(ceil(stride-1)/2)
   name = "upsample%d"%s
-  return L.Deconvolution(bottom, name=name,
-      convolution_param=dict(num_output=1, kernel_size=k, stride=s, bias_term=False, weight_filler = dict(type="bilinear")),
-      param=[dict(lr_mult=0, decay_mult=1)])
+  return L.Deconvolution(bottom, name=name, convolution_param=dict(num_output=1, 
+    kernel_size=k, stride=s, pad=pad, weight_filler = dict(type="bilinear")),
+      param=[dict(lr_mult=0, decay_mult=0), dict(lr_mult=0, decay_mult=0)])
 
 def fcn(split):
   n = caffe.NetSpec()
@@ -38,7 +39,7 @@ def fcn(split):
   else:
     raise Exception("Invalid phase")
 
-  n.conv1_1, n.relu1_1 = conv_relu(n.data, 64, pad=35)
+  n.conv1_1, n.relu1_1 = conv_relu(n.data, 64, pad=1)
   n.conv1_2, n.relu1_2 = conv_relu(n.relu1_1, 64)
   n.pool1 = max_pool(n.relu1_2)
 
@@ -151,3 +152,4 @@ def make_all():
 
 if __name__ == '__main__':
   make_all()
+

@@ -11,7 +11,7 @@ if [ ! -e build ]; then
     mkdir build
 fi
 cd build
-cmake .. -DUSECUDNN=ON && make -j$(nproc)
+cmake .. -DUSE_CUDNN=ON && make -j$(nproc)
 cd $THIS_DIR
 echo "Done!"
 
