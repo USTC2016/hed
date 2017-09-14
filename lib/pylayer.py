@@ -62,6 +62,9 @@ class ImageLabelmapDataLayer(caffe.Layer):
     top[0].data[...] = img
     top[1].data[...] = lb
     if self.idx == len(self.filelist)-1:
+      # we've reached the end, restart.
+      print "Restarting data prefetching from start."
+      random.shuffle(self.filelist)
       self.idx = 0
     else:
       self.idx = self.idx + 1
@@ -71,3 +74,4 @@ class ImageLabelmapDataLayer(caffe.Layer):
     Data layer doesn't need back propagate
     """
     pass
+
